@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
+Credit to YoApp/BarRecommender from https://github.com/YoApp/BarRecommendor/
 
-Yo single tap bar recommendation
+Yo single tap lunch recommendation
 Yo Docs: http://docs.justyo.co
 Yo Keys: http://dev.justyo.co
 
@@ -14,21 +15,24 @@ import sys
 import requests
 import oauth2
 from flask import request, Flask
+import urllib
+import urllib2
 
 API_HOST = 'api.yelp.com'
-SEARCH_LIMIT = 1
-SEARCH_PATH = '/v2/search/'
+SEARCH_LIMIT = 10
+SEARCH_OFFSET = 10
+SEARCH_PATH = '/v2/search'
 BUSINESS_PATH = '/v2/business/'
 
 # OAuth credential placeholders that must be filled in by users.
 # Yelp Keys: http://www.yelp.com/developers/manage_api_keys
-CONSUMER_KEY = ''
-CONSUMER_SECRET = ''
-TOKEN = ''
-TOKEN_SECRET = ''
+CONSUMER_KEY = '7csfR86YeNesyGPjoP-P_Q'
+CONSUMER_SECRET = 'OGAPP1o4gsBTR-MoJ-eVFzk5aRU'
+TOKEN = 'aZll3F1Fl_IDodqA0iT3ZjviQtzqLV0t'
+TOKEN_SECRET = 'dZXozaW2bt3xgwZCV46lcaps3Sw'
 
 # Yo API Token: http://dev.justyo.co
-YO_API_TOKEN = ''
+YO_API_TOKEN = 'de1e7a13-2440-468c-b03a-9a90ff3d2d8e'
 
 
 if len(CONSUMER_KEY) == 0 or \
@@ -36,7 +40,7 @@ if len(CONSUMER_KEY) == 0 or \
     len(TOKEN) == 0 or \
     len(TOKEN_SECRET) == 0 or \
     len(YO_API_TOKEN) == 0:
-    print 'fill the tokens in lines 30-36'
+    print 'fill the tokens for Yelp'
     sys.exit(1)
 
 
@@ -66,12 +70,14 @@ def do_request(host, path, url_params=None):
 def search(term, city, latitude, longitude):
     
     url_params = {
-        'term': term,
-        'location': city,
+        'category_filter': 'restaurants',
         'cll': latitude + ',' + longitude,
         'limit': SEARCH_LIMIT,
+        'location': city,
+        'offset': SEARCH_OFFSET,
+        'radius_filter': 8000, # 5 miles
         'sort': 2, # highest rated
-        'radius_filter': 1600 # one mile
+        'term': term
     }
 
     return do_request(API_HOST, SEARCH_PATH, url_params=url_params)
@@ -99,22 +105,22 @@ def yo():
 
     print username + " is at " + city
 
-    # search for bars using Yelp api
-    response = search('bars', city, latitude, longitude)
+    # search for restaurants using Yelp api
+    response = search('lunch', city, latitude, longitude)
 
-    # grab the first result (we limit the results to 1 anyway in the request)
-    bar = response['businesses'][0]
+    # grab the a random result
+    #restaurant = response['businesses'][randint(0,len(response['businesses'])-1]
+    restaurant = response['businesses'][0]
 
-    bar_url = bar['mobile_url']
+    restaurant_url = restaurant['mobile_url']
 
-    print "Recommended bar is " + bar['name']
+    print "Grab lunch at " + restaurant['name']
 
     # Yo the result back to the user
-    requests.post("http://api.justyo.co/yo/", data={'api_token': YO_API_TOKEN, 'username': username, 'link': bar_url})
+    requests.post("http://api.justyo.co/yo/", data={'api_token': YO_API_TOKEN, 'username': username, 'link': restaurant_url})
 
     # OK!
     return 'OK'
-
 
 if __name__ == "__main__":
     app.debug = True
