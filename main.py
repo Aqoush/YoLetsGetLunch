@@ -11,17 +11,20 @@ Yelp Docs: http://www.yelp.com/developers/documentation
 Yelp Keys: http://www.yelp.com/developers/manage_api_keys
 
 """
+import random
 import sys
 import requests
 import oauth2
-from flask import request, Flask
 import urllib
 import urllib2
+import json
+from flask import request, Flask
+
 
 API_HOST = 'api.yelp.com'
-SEARCH_LIMIT = 10
-SEARCH_OFFSET = 10
-SEARCH_PATH = '/v2/search'
+SEARCH_LIMIT = 20
+SEARCH_OFFSET = 20
+SEARCH_PATH = '/v2/search?'
 BUSINESS_PATH = '/v2/business/'
 
 # OAuth credential placeholders that must be filled in by users.
@@ -46,9 +49,11 @@ if len(CONSUMER_KEY) == 0 or \
 
 def do_request(host, path, url_params=None):
     
-    url = 'http://{0}{1}'.format(host, path)
+    url = 'http://{0}{1}?'.format(host, path)
+
     consumer = oauth2.Consumer(CONSUMER_KEY, CONSUMER_SECRET)
-    oauth_request = oauth2.Request('GET', url, url_params)
+    oauth_request = oauth2.Request(method="GET", url=url, parameters=url_params)
+
     oauth_request.update(
         {
             'oauth_nonce': oauth2.generate_nonce(),
@@ -60,24 +65,28 @@ def do_request(host, path, url_params=None):
     token = oauth2.Token(TOKEN, TOKEN_SECRET)
     oauth_request.sign_request(oauth2.SignatureMethod_HMAC_SHA1(), consumer, token)
     signed_url = oauth_request.to_url()
+    
+    print 'Querying {0} ...'.format(url)
 
-    print 'Querying Yelp {0}'.format(signed_url)
+    conn = urllib2.urlopen(signed_url, None)
+    try:
+        response = json.loads(conn.read())
+    finally:
+        conn.close()
 
-    response = requests.get(signed_url)
-    response_object = response.json()
-    return response_object
+    return response
 
 def search(term, city, latitude, longitude):
     
     url_params = {
-        'category_filter': 'restaurants',
+        #'category_filter': 'restaurants',
+        #'offset': SEARCH_OFFSET,
+        'term': term.replace(' ', '+'),
+        'location': city.replace(' ', '+'),
         'cll': latitude + ',' + longitude,
         'limit': SEARCH_LIMIT,
-        'location': city,
-        'offset': SEARCH_OFFSET,
-        'radius_filter': 8000, # 5 miles
         'sort': 2, # highest rated
-        'term': term
+        'radius_filter': 8000 # five miles
     }
 
     return do_request(API_HOST, SEARCH_PATH, url_params=url_params)
@@ -108,9 +117,10 @@ def yo():
     # search for restaurants using Yelp api
     response = search('lunch', city, latitude, longitude)
 
+    print response
     # grab the a random result
-    #restaurant = response['businesses'][randint(0,len(response['businesses'])-1]
-    restaurant = response['businesses'][0]
+    restaurant = response['businesses'][random.randint(0,len(response['businesses']))-1]
+    #restaurant = response['businesses'][0]
 
     restaurant_url = restaurant['mobile_url']
 
